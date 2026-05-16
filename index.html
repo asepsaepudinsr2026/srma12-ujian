@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Ujian - SRMA 12 Bogor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb, #06b6d4);
+            background-size: 400% 400%;
+            animation: gradientMove 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 430px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 90px; height: 90px;
+            background: linear-gradient(135deg, #facc15, #f97316);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 42px;
+            box-shadow: 0 12px 25px rgba(249,115,22,0.45);
+        }
+
+        .card {
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 32px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 45px rgba(0,0,0,0.35);
+        }
+
+        h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .subtitle { opacity: 0.9; font-size: 14px; margin-bottom: 25px; }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        input::placeholder { color: #e2e8f0; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #facc15, #f97316);
+            color: #111827;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(249,115,22,0.4); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .error { color: #fca5a5; font-size: 13px; margin-top: 10px; }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo">🎓</div>
+        
+        <div class="card">
+            <h1>Portal Ujian</h1>
+            <p class="subtitle">SRMA 12 Bogor<br>Sistem Ujian Semester Genap Digital</p>
+
+            <input type="text" id="nis" placeholder="Masukkan NIS Anda" maxlength="20">
+            <button onclick="login()" id="btnLogin">🚀 MASUK UJIAN</button>
+            <div id="msg" class="error"></div>
+
+            <div class="info">
+                ℹ️ <strong>Petunjuk:</strong><br>
+                • Masukkan NIS yang terdaftar<br>
+                • Aktifkan kamera untuk verifikasi<br>
+                • Jangan pindah tab saat ujian
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        async function login() {
+            const nis = document.getElementById('nis').value.trim();
+            const btn = document.getElementById('btnLogin');
+            const msg = document.getElementById('msg');
+
+            if (!nis) {
+                msg.innerText = '❌ Masukkan NIS!';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = '⏳ Mengecek...';
+
+            try {
+                const snapshot = await DB.getSiswa(nis);
+                const siswa = snapshot.val();
+
+                if (!siswa) {
+                    msg.innerText = '❌ NIS tidak terdaftar!';
+                    btn.disabled = false;
+                    btn.innerText = '🚀 MASUK UJIAN';
+                    return;
+                }
+
+                if (siswa.status !== 'aktif') {
+                    msg.innerText = '❌ Status siswa non-aktif!';
+                    btn.disabled = false;
+                    btn.innerText = '🚀 MASUK UJIAN';
+                    return;
+                }
+
+                // Simpan data ke sessionStorage
+                sessionStorage.setItem('nis', nis);
+                sessionStorage.setItem('nama', siswa.nama);
+                sessionStorage.setItem('kelas', siswa.kelas);
+                sessionStorage.setItem('deviceId', navigator.userAgent);
+
+                // Update monitoring
+                await DB.updateMonitoring(nis, {
+                    nis: nis,
+                    nama: siswa.nama,
+                    kelas: siswa.kelas,
+                    status: 'Login',
+                    waktu: new Date().toLocaleString('id-ID'),
+                    ip: 'detected'
+                });
+
+                // Redirect ke verifikasi kamera
+                window.location.href = 'kamera.html';
+
+            } catch (error) {
+                console.error(error);
+                msg.innerText = '❌ Error: ' + error.message;
+                btn.disabled = false;
+                btn.innerText = '🚀 MASUK UJIAN';
+            }
+        }
+
+        // Enter key
+        document.getElementById('nis').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+    </script>
+
+</body>
+</html>

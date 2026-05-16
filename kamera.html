@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Kamera - SRMA 12 Bogor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb, #06b6d4);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #facc15, #f97316);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 45px rgba(0,0,0,0.3);
+        }
+
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        .subtitle { opacity: 0.9; font-size: 14px; margin-bottom: 20px; }
+
+        .cam-preview {
+            width: 100%;
+            max-width: 320px;
+            height: 240px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            margin: 0 auto 20px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .cam-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .cam-preview.active video { display: block; }
+
+        .cam-placeholder {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .cam-placeholder .icon { font-size: 48px; margin-bottom: 10px; display: block; }
+
+        .cam-preview.active .cam-placeholder { display: none; }
+
+        .status-text {
+            font-size: 14px;
+            margin-bottom: 20px;
+            min-height: 24px;
+        }
+
+        .status-text.success { color: #4ade80; }
+        .status-text.error { color: #fca5a5; }
+
+        .btn {
+            border: none;
+            border-radius: 50px;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            max-width: 280px;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #facc15, #f97316);
+            color: #111827;
+            box-shadow: 0 8px 25px rgba(249,115,22,0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 8px 25px rgba(34,197,94,0.4);
+            display: none;
+        }
+
+        .info-box {
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo">🎓</div>
+        <h1>Portal Ujian</h1>
+        <p class="subtitle">SRMA 12 Bogor - Verifikasi Keamanan</p>
+
+        <div class="card">
+            <div style="background: rgba(250,204,21,0.2); color: #facc15; padding: 6px 16px; border-radius: 50px; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 15px;">
+                🔒 Langkah 1: Verifikasi Kamera
+            </div>
+
+            <div class="cam-preview" id="camPreview">
+                <div class="cam-placeholder">
+                    <span class="icon">📷</span>
+                    <div>Kamera Belum Aktif</div>
+                </div>
+                <video id="videoCam" autoplay playsinline muted></video>
+            </div>
+
+            <div class="status-text" id="statusText">
+                Sistem mewajibkan webcam laptop aktif sebelum ujian dimulai.
+            </div>
+
+            <button class="btn btn-primary" id="btnAktifkan" onclick="aktifkanKamera()">
+                📷 Aktifkan Kamera
+            </button>
+
+            <button class="btn btn-success" id="btnMulai" onclick="mulaiUjian()">
+                🚀 Mulai Ujian
+            </button>
+
+            <div class="info-box">
+                ℹ️ <strong>Catatan:</strong> Kamera akan tetap aktif selama ujian berlangsung. 
+                Sistem akan mengirim snapshot secara berkala untuk pemantauan pengawas.
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        // Ambil data dari sessionStorage
+        const nis = sessionStorage.getItem('nis');
+        const nama = sessionStorage.getItem('nama');
+        const kelas = sessionStorage.getItem('kelas');
+
+        if (!nis || !nama) {
+            alert('Silakan login terlebih dahulu!');
+            window.location.href = 'index.html';
+        }
+
+        let streamKamera = null;
+        let intervalSnapshot = null;
+        let isCameraActive = false;
+
+        function aktifkanKamera() {
+            const btn = document.getElementById('btnAktifkan');
+            const status = document.getElementById('statusText');
+            const preview = document.getElementById('camPreview');
+            const video = document.getElementById('videoCam');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Meminta izin...';
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } 
+            })
+            .then(stream => {
+                streamKamera = stream;
+                video.srcObject = stream;
+                preview.classList.add('active');
+                
+                status.innerHTML = '<span class="success">✅ Kamera berhasil diaktifkan!</span>';
+                status.className = 'status-text success';
+                
+                btn.style.display = 'none';
+                document.getElementById('btnMulai').style.display = 'inline-block';
+                
+                isCameraActive = true;
+
+                // Update status ke Firebase
+                DB.updateMonitoring(nis, {
+                    status: 'Kamera Aktif - Menunggu Ujian',
+                    camera: 'Aktif',
+                    lastUpdate: new Date().toISOString()
+                });
+
+                // Kirim snapshot pertama
+                setTimeout(kirimSnapshot, 1000);
+                
+                // Mulai kirim snapshot berkala (30 detik)
+                intervalSnapshot = setInterval(kirimSnapshot, 30000);
+            })
+            .catch(err => {
+                let pesan = '❌ ';
+                switch(err.name) {
+                    case 'NotAllowedError': 
+                        pesan += 'Kamera ditolak. Klik ikon kunci di address bar, lalu izinkan kamera.'; 
+                        break;
+                    case 'NotFoundError': 
+                        pesan += 'Kamera tidak ditemukan. Pastikan webcam terhubung.'; 
+                        break;
+                    case 'NotReadableError': 
+                        pesan += 'Kamera sedang digunakan aplikasi lain (Zoom, Meet, dll).'; 
+                        break;
+                    default: 
+                        pesan += err.message || 'Gagal mengakses kamera.';
+                }
+                
+                status.innerHTML = '<span class="error">' + pesan + '</span>';
+                status.className = 'status-text error';
+                btn.disabled = false;
+                btn.innerHTML = '📷 Coba Lagi';
+            });
+        }
+
+        function kirimSnapshot() {
+            if (!streamKamera || !isCameraActive) return;
+
+            const video = document.getElementById('videoCam');
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            
+            // Flip horizontal (mirror)
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const base64 = canvas.toDataURL('image/jpeg', 0.3);
+
+            // Kirim ke Firebase
+            DB.updateCamera(nis, {
+                image: base64,
+                nama: nama,
+                kelas: kelas,
+                timestamp: new Date().toISOString(),
+                status: 'aktif'
+            });
+
+            // Update monitoring juga
+            DB.updateMonitoring(nis, {
+                status: 'Sedang Mengerjakan',
+                camera: 'Aktif',
+                lastUpdate: new Date().toISOString()
+            });
+        }
+
+        function mulaiUjian() {
+            if (!isCameraActive) {
+                alert('Kamera harus aktif terlebih dahulu!');
+                return;
+            }
+
+            const btn = document.getElementById('btnMulai');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Memuat ujian...';
+
+            // Update status
+            DB.updateMonitoring(nis, {
+                status: 'Sedang Mengerjakan',
+                camera: 'Aktif',
+                lastUpdate: new Date().toISOString()
+            });
+
+            // Simpan flag kamera terverifikasi
+            sessionStorage.setItem('cameraVerified', 'true');
+
+            // Redirect ke dashboard ujian
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1000);
+        }
+
+        // Cleanup saat halaman ditutup
+        window.addEventListener('beforeunload', function() {
+            if (streamKamera) {
+                streamKamera.getTracks().forEach(track => track.stop());
+            }
+            if (intervalSnapshot) {
+                clearInterval(intervalSnapshot);
+            }
+        });
+
+        // Deteksi tab switching
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isCameraActive) {
+                // Kirim pelanggaran ke Firebase
+                DB.updateMonitoring(nis, {
+                    pelanggaran: 'Pindah Tab pada ' + new Date().toLocaleTimeString('id-ID'),
+                    status: '⚠️ TERDETEKSI CURANG'
+                });
+                
+                DB.addLog({
+                    timestamp: new Date().toISOString(),
+                    aksi: 'PELANGGARAN',
+                    detail: 'Siswa pindah tab saat verifikasi kamera',
+                    user: nama + ' (' + nis + ')'
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Monitoring - SRMA 12 Bogor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+        .header-live { background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 20px 35px; }
+        .live-badge { background: #ef4444; color: white; padding: 6px 16px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .stat-card { background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 20px; text-align: center; }
+        .stat-number { font-size: 2.2rem; font-weight: 800; color: #38bdf8; }
+        .siswa-card { background: rgba(30, 41, 59, 0.6); border-radius: 20px; overflow: hidden; }
+        .cam-box { width: 100%; height: 180px; background: #1e293b; position: relative; overflow: hidden; }
+        .cam-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+        .cam-offline { display: flex; align-items: center; justify-content: center; height: 100%; color: #64748b; flex-direction: column; }
+        .status-badge { padding: 6px 14px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+        .status-mengerjakan { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+        .status-selesai { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .status-pelanggaran { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .pelanggaran-box { margin-top: 10px; padding: 8px 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 0 8px 8px 0; font-size: 0.8rem; color: #fca5a5; }
+        .log-sidebar { background: rgba(30, 41, 59, 0.6); border-radius: 20px; max-height: calc(100vh - 140px); overflow-y: auto; }
+        .log-item { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="header-live d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="fw-bold"><i class="fa-solid fa-shield-halved me-2"></i>Live Monitoring Ujian</h2>
+        <p class="mt-1 opacity-75">SRMA 12 Bogor - Pemantauan Real-Time</p>
+    </div>
+    <div class="text-end">
+        <div class="live-badge mb-2"><i class="fa-solid fa-circle fa-xs me-1"></i> LIVE</div>
+        <div class="text-muted small"><i class="fa-solid fa-rotate fa-spin me-1" id="spinIcon"></i><span id="lastUpdate">Menghubungkan...</span></div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <div class="row g-4">
+        <div class="col-lg-9">
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-number" id="statTotal">0</div><div class="text-muted">Total</div></div></div>
+                <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-number" id="statAktif" style="color: #eab308;">0</div><div class="text-muted">Mengerjakan</div></div></div>
+                <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-number" id="statSelesai" style="color: #22c55e;">0</div><div class="text-muted">Selesai</div></div></div>
+                <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-number" id="statCurang" style="color: #ef4444;">0</div><div class="text-muted">Pelanggaran</div></div></div>
+            </div>
+            <div id="gridSiswa" class="row g-3"></div>
+        </div>
+        <div class="col-lg-3">
+            <div class="log-sidebar">
+                <div class="p-3 border-bottom border-secondary"><h6 class="fw-bold m-0"><i class="fa-solid fa-clock-rotate-left me-2"></i>Log Aktivitas</h6></div>
+                <div id="listLogs"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script>
+    const REFRESH_INTERVAL = 5000;
+    let globalFeeds = {};
+
+    function loadData() {
+        document.getElementById('spinIcon').classList.add('fa-spin');
+        document.getElementById('lastUpdate').innerText = "Memperbarui...";
+
+        // Listen real-time
+        db.ref('monitoring').on('value', snapshot => {
+            const monitoring = snapshot.val() || {};
+            renderGrid(Object.values(monitoring));
+            renderStats(Object.values(monitoring));
+        });
+
+        db.ref('camera').on('value', snapshot => {
+            globalFeeds = snapshot.val() || {};
+            // Re-render dengan kamera
+            db.ref('monitoring').once('value').then(snap => {
+                renderGrid(Object.values(snap.val() || {}));
+            });
+        });
+
+        db.ref('logs').limitToLast(20).on('value', snapshot => {
+            const logs = [];
+            snapshot.forEach(child => {
+                logs.unshift(child.val());
+            });
+            renderLogs(logs);
+        });
+
+        setTimeout(() => {
+            document.getElementById('spinIcon').classList.remove('fa-spin');
+            document.getElementById('lastUpdate').innerText = "Update: " + new Date().toLocaleTimeString('id-ID') + " WIB";
+        }, 1000);
+    }
+
+    function renderGrid(data) {
+        const grid = document.getElementById('gridSiswa');
+        if (!data.length) {
+            grid.innerHTML = '<div class="col-12 text-center py-5 text-muted"><i class="fa-solid fa-clipboard-check fa-3x mb-3 opacity-25"></i><p>Belum ada siswa aktif.</p></div>';
+            return;
+        }
+
+        // Sort: pelanggaran first, then mengerjakan, then selesai
+        const sorted = [...data].sort((a, b) => {
+            if (a.pelanggaran && !b.pelanggaran) return -1;
+            if (!a.pelanggaran && b.pelanggaran) return 1;
+            if (a.status === 'Sedang Mengerjakan' && b.status !== 'Sedang Mengerjakan') return -1;
+            return 0;
+        });
+
+        let html = '';
+        sorted.forEach(siswa => {
+            const feedData = globalFeeds[siswa.nis];
+            const hasCamera = feedData && feedData.image;
+            
+            let statusClass = 'status-mengerjakan';
+            let statusText = siswa.status || 'Aktif';
+            if (statusText === 'Selesai') statusClass = 'status-selesai';
+            if (siswa.pelanggaran) statusClass = 'status-pelanggaran';
+
+            const camHtml = hasCamera 
+                ? `<img src="${feedData.image}" onclick="perbesar('${siswa.nama}', '${siswa.nis}')">`
+                : `<div class="cam-offline"><i class="fa-solid fa-video-slash fa-2x mb-2"></i><div>Kamera Offline</div></div>`;
+
+            const pelanggaranHtml = siswa.pelanggaran 
+                ? `<div class="pelanggaran-box"><i class="fa-solid fa-triangle-exclamation me-1"></i>${siswa.pelanggaran}</div>` 
+                : '';
+
+            html += `
+                <div class="col-12 col-sm-6 col-md-4 col-xl-3">
+                    <div class="siswa-card">
+                        <div class="cam-box">${camHtml}</div>
+                        <div class="p-3">
+                            <div class="fw-bold">${siswa.nama || 'Unknown'}</div>
+                            <div class="text-muted small mb-2"><i class="fa-solid fa-id-card me-1"></i>${siswa.nis} | ${siswa.kelas || '-'}</div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            ${pelanggaranHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        grid.innerHTML = html;
+    }
+
+    function renderStats(data) {
+        const total = data.length;
+        const aktif = data.filter(s => s.status === 'Sedang Mengerjakan').length;
+        const selesai = data.filter(s => s.status === 'Selesai').length;
+        const curang = data.filter(s => s.pelanggaran).length;
+
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statAktif').innerText = aktif;
+        document.getElementById('statSelesai').innerText = selesai;
+        document.getElementById('statCurang').innerText = curang;
+    }
+
+    function renderLogs(logs) {
+        const list = document.getElementById('listLogs');
+        if (!logs.length) {
+            list.innerHTML = '<div class="log-item text-center text-muted">Belum ada aktivitas</div>';
+            return;
+        }
+
+        let html = '';
+        logs.forEach(log => {
+            let color = 'text-info';
+            let icon = 'fa-info-circle';
+            if (log.aksi === 'PELANGGARAN') { color = 'text-danger'; icon = 'fa-triangle-exclamation'; }
+            if (log.aksi === 'SELESAI') { color = 'text-success'; icon = 'fa-check-circle'; }
+
+            html += `
+                <div class="log-item">
+                    <div class="text-muted small">${new Date(log.timestamp).toLocaleTimeString('id-ID')}</div>
+                    <div class="${color} fw-bold"><i class="fa-solid ${icon} me-1"></i>${log.aksi}</div>
+                    <div class="text-muted">${log.user || '-'}: ${log.detail || '-'}</div>
+                </div>
+            `;
+        });
+
+        list.innerHTML = html;
+    }
+
+    function perbesar(nama, nis) {
+        const feedData = globalFeeds[nis];
+        if (feedData && feedData.image) {
+            const win = window.open('', '_blank');
+            win.document.write(`<<html><body style="margin:0;background:#000;"><img src="${feedData.image}" style="width:100%;height:100vh;object-fit:contain;"><div style="position:fixed;top:20px;left:20px;color:white;font-family:sans-serif;">${nama} | NIS: ${nis}</div></body></html>`);
+        }
+    }
+
+    // Init
+    loadData();
+</script>
+
+</body>
+</html>

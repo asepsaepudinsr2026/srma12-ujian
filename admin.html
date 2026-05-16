@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - SRMA 12 Bogor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
+        .sidebar { background: #1e293b; min-height: 100vh; padding: 20px; }
+        .nav-link { color: #94a3b8; padding: 12px; border-radius: 10px; margin-bottom: 5px; cursor: pointer; }
+        .nav-link:hover, .nav-link.active { background: rgba(56, 189, 248, 0.1); color: #38bdf8; }
+        .content { padding: 30px; }
+        .stat-card { background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 20px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: 800; color: #38bdf8; }
+        table { color: white; }
+        .table-dark { background: rgba(30, 41, 59, 0.6); }
+        .badge-aktif { background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 5px 12px; border-radius: 50px; }
+        .badge-curang { background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 5px 12px; border-radius: 50px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- SIDEBAR -->
+        <div class="col-md-2 sidebar">
+            <h4 class="mb-4">🎓 SRMA 12</h4>
+            <div class="nav-link active" onclick="showTab('dashboard')"><i class="fa-solid fa-chart-line me-2"></i> Dashboard</div>
+            <div class="nav-link" onclick="showTab('siswa')"><i class="fa-solid fa-users me-2"></i> Data Siswa</div>
+            <div class="nav-link" onclick="showTab('ujian')"><i class="fa-solid fa-book me-2"></i> Kelola Ujian</div>
+            <div class="nav-link" onclick="showTab('monitoring')"><i class="fa-solid fa-eye me-2"></i> Monitoring</div>
+            <div class="nav-link" onclick="window.open('live.html', '_blank')"><i class="fa-solid fa-video me-2"></i> Live Monitor</div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="col-md-10 content">
+            
+            <!-- DASHBOARD -->
+            <div id="tab-dashboard">
+                <h3 class="mb-4">📊 Dashboard</h3>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3"><div class="stat-card"><div class="stat-number" id="statTotal">0</div><div class="text-muted">Total Siswa</div></div></div>
+                    <div class="col-md-3"><div class="stat-card"><div class="stat-number" id="statAktif" style="color: #22c55e;">0</div><div class="text-muted">Online</div></div></div>
+                    <div class="col-md-3"><div class="stat-card"><div class="stat-number" id="statUjian" style="color: #eab308;">0</div><div class="text-muted">Sedang Ujian</div></div></div>
+                    <div class="col-md-3"><div class="stat-card"><div class="stat-number" id="statCurang" style="color: #ef4444;">0</div><div class="text-muted">Pelanggaran</div></div></div>
+                </div>
+            </div>
+
+            <!-- DATA SISWA -->
+            <div id="tab-siswa" style="display:none;">
+                <h3 class="mb-4">👥 Data Siswa</h3>
+                <button class="btn btn-primary mb-3" onclick="tambahSiswa()"><i class="fa-solid fa-plus me-2"></i>Tambah Siswa</button>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Aksi</th></tr></thead>
+                        <tbody id="tableSiswa"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- KELOLA UJIAN -->
+            <div id="tab-ujian" style="display:none;">
+                <h3 class="mb-4">📚 Kelola Ujian</h3>
+                <div class="card bg-dark p-4 mb-4">
+                    <h5>Tambah Ujian Baru</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3"><input type="text" id="uMapel" class="form-control" placeholder="Mata Pelajaran"></div>
+                        <div class="col-md-2"><input type="text" id="uKelas" class="form-control" placeholder="Kelas"></div>
+                        <div class="col-md-3"><input type="text" id="uLink" class="form-control" placeholder="Link Google Form"></div>
+                        <div class="col-md-2"><input type="text" id="uToken" class="form-control" placeholder="Token"></div>
+                        <div class="col-md-2"><input type="number" id="uDurasi" class="form-control" placeholder="Durasi (menit)"></div>
+                        <div class="col-md-12"><button class="btn btn-primary" onclick="simpanUjian()">Simpan Ujian</button></div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead><tr><th>Mapel</th><th>Kelas</th><th>Token</th><th>Durasi</th><th>Status</th><th>Aksi</th></tr></thead>
+                        <tbody id="tableUjian"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MONITORING -->
+            <div id="tab-monitoring" style="display:none;">
+                <h3 class="mb-4">📡 Monitoring Real-Time</h3>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Mapel</th><th>Pelanggaran</th><th>Terakhir Aktif</th></tr></thead>
+                        <tbody id="tableMonitoring"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script>
+    // Tab navigation
+    function showTab(tab) {
+        document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+        document.getElementById('tab-' + tab).style.display = 'block';
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    // Load data
+    async function loadDashboard() {
+        const siswaSnap = await db.ref('siswa').once('value');
+        const monitoringSnap = await db.ref('monitoring').once('value');
+        
+        const siswa = siswaSnap.val() || {};
+        const monitoring = monitoringSnap.val() || {};
+        
+        let aktif = 0, ujian = 0, curang = 0;
+        
+        Object.values(monitoring).forEach(m => {
+            if (m.status === 'Sedang Mengerjakan') ujian++;
+            if (m.pelanggaran) curang++;
+            // Cek lastHeartbeat < 2 menit
+            if (m.lastHeartbeat) {
+                const last = new Date(m.lastHeartbeat);
+                const diff = (new Date() - last) / 1000 / 60;
+                if (diff < 2) aktif++;
+            }
+        });
+        
+        document.getElementById('statTotal').innerText = Object.keys(siswa).length;
+        document.getElementById('statAktif').innerText = aktif;
+        document.getElementById('statUjian').innerText = ujian;
+        document.getElementById('statCurang').innerText = curang;
+    }
+
+    async function loadSiswa() {
+        const snapshot = await db.ref('siswa').once('value');
+        const data = snapshot.val() || {};
+        
+        let html = '';
+        Object.keys(data).forEach(nis => {
+            const s = data[nis];
+            html += `
+                <tr>
+                    <td>${nis}</td>
+                    <td>${s.nama}</td>
+                    <td>${s.kelas}</td>
+                    <td><span class="badge-aktif">${s.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editSiswa('${nis}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="hapusSiswa('${nis}')">Hapus</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        document.getElementById('tableSiswa').innerHTML = html;
+    }
+
+    async function loadUjian() {
+        const snapshot = await db.ref('ujian').once('value');
+        const data = snapshot.val() || {};
+        
+        let html = '';
+        Object.keys(data).forEach(id => {
+            const u = data[id];
+            html += `
+                <tr>
+                    <td>${u.mapel}</td>
+                    <td>${u.kelas}</td>
+                    <td>${u.token}</td>
+                    <td>${u.durasi} menit</td>
+                    <td><span class="badge-aktif">Aktif</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="hapusUjian('${id}')">Hapus</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        document.getElementById('tableUjian').innerHTML = html;
+    }
+
+    function listenMonitoring() {
+        db.ref('monitoring').on('value', snapshot => {
+            const data = snapshot.val() || {};
+            
+            let html = '';
+            Object.keys(data).forEach(nis => {
+                const m = data[nis];
+                const statusClass = m.pelanggaran ? 'badge-curang' : 'badge-aktif';
+                
+                html += `
+                    <tr>
+                        <td>${nis}</td>
+                        <td>${m.nama || '-'}</td>
+                        <td>${m.kelas || '-'}</td>
+                        <td><span class="${statusClass}">${m.status}</span></td>
+                        <td>${m.mapel || '-'}</td>
+                        <td>${m.pelanggaran || '-'}</td>
+                        <td>${m.lastHeartbeat ? new Date(m.lastHeartbeat).toLocaleTimeString('id-ID') : '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('tableMonitoring').innerHTML = html;
+        });
+    }
+
+    // CRUD Functions
+    async function tambahSiswa() {
+        const nis = prompt('NIS:');
+        const nama = prompt('Nama:');
+        const kelas = prompt('Kelas:');
+        
+        if (nis && nama) {
+            await db.ref('siswa/' + nis).set({
+                nama: nama,
+                kelas: kelas || '-',
+                status: 'aktif'
+            });
+            loadSiswa();
+        }
+    }
+
+    async function simpanUjian() {
+        const id = 'UJ-' + Date.now();
+        const mapel = document.getElementById('uMapel').value;
+        const kelas = document.getElementById('uKelas').value;
+        const link = document.getElementById('uLink').value;
+        const token = document.getElementById('uToken').value;
+        const durasi = document.getElementById('uDurasi').value;
+        
+        if (!mapel || !link || !token) {
+            alert('Lengkapi data ujian!');
+            return;
+        }
+        
+        await db.ref('ujian/' + id).set({
+            mapel, kelas: kelas || 'semua', link, token, durasi: durasi || 60
+        });
+        
+        alert('Ujian berhasil ditambahkan!');
+        loadUjian();
+        
+        // Clear form
+        document.getElementById('uMapel').value = '';
+        document.getElementById('uKelas').value = '';
+        document.getElementById('uLink').value = '';
+        document.getElementById('uToken').value = '';
+        document.getElementById('uDurasi').value = '';
+    }
+
+    async function hapusSiswa(nis) {
+        if (confirm('Hapus siswa ' + nis + '?')) {
+            await db.ref('siswa/' + nis).remove();
+            loadSiswa();
+        }
+    }
+
+    async function hapusUjian(id) {
+        if (confirm('Hapus ujian ini?')) {
+            await db.ref('ujian/' + id).remove();
+            loadUjian();
+        }
+    }
+
+    // Init
+    loadDashboard();
+    loadSiswa();
+    loadUjian();
+    listenMonitoring();
+</script>
+
+</body>
+</html>
